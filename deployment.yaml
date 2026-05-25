@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: construction-cost-model
+  labels:
+    app: construction-cost-model
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: construction-cost-model
+  template:
+    metadata:
+      labels:
+        app: construction-cost-model
+    spec:
+      containers:
+        - name: model-server
+          image: ghcr.io/kaispace30098/construction-cost-model:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
