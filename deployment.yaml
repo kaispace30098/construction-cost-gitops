@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: construction-cost-model
+  namespace: mlops
   labels:
     app: construction-cost-model
 spec:
