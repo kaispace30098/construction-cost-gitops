@@ -119,15 +119,13 @@ Write-Ok "Port-forwards started."
 Write-Step "Running demo predictions..."
 
 Write-Host "`n  [HIGH complexity] 45-day, high-risk, heavy constraints:" -ForegroundColor Yellow
-$high = Invoke-RestMethod -Uri http://localhost:9090/predict -Method Post `
-    -ContentType "application/json" `
-    -Body '{"Task_Duration_Days":45,"Labor_Required":15,"Equipment_Units":8,"Start_Constraint":3,"Risk_Level":"High","Resource_Constraint_Score":6,"Site_Constraint_Score":7,"Dependency_Count":4}'
+$bodyHigh = '{"Task_Duration_Days":45,"Labor_Required":15,"Equipment_Units":8,"Start_Constraint":3,"Risk_Level":"High","Resource_Constraint_Score":6,"Site_Constraint_Score":7,"Dependency_Count":4}'
+$high = Invoke-RestMethod -Uri http://localhost:9090/predict -Method Post -ContentType "application/json" -Body $bodyHigh
 Write-Host ("  Predicted cost: `$" + ("{0:N2}" -f $high.predicted_cost_usd)) -ForegroundColor Green
 
 Write-Host "`n  [LOW complexity] 5-day, low-risk, no constraints:" -ForegroundColor Yellow
-$low = Invoke-RestMethod -Uri http://localhost:9090/predict -Method Post `
-    -ContentType "application/json" `
-    -Body '{"Task_Duration_Days":5,"Labor_Required":2,"Equipment_Units":1,"Start_Constraint":0,"Risk_Level":"Low","Resource_Constraint_Score":1,"Site_Constraint_Score":1,"Dependency_Count":0}'
+$bodyLow = '{"Task_Duration_Days":5,"Labor_Required":2,"Equipment_Units":1,"Start_Constraint":0,"Risk_Level":"Low","Resource_Constraint_Score":1,"Site_Constraint_Score":1,"Dependency_Count":0}'
+$low = Invoke-RestMethod -Uri http://localhost:9090/predict -Method Post -ContentType "application/json" -Body $bodyLow
 Write-Host ("  Predicted cost: `$" + ("{0:N2}" -f $low.predicted_cost_usd)) -ForegroundColor Green
 
 $ratio = [math]::Round($high.predicted_cost_usd / $low.predicted_cost_usd, 1)
