@@ -102,13 +102,11 @@ kubectl get pods -n $MODEL_NS
 # -----------------------------------------------------------------------------
 Write-Step "Starting port-forwards in new windows..."
 
-# ArgoCD UI  →  https://localhost:8080
-Start-Process powershell -ArgumentList "-NoExit", "-Command",
-    "Write-Host 'ArgoCD port-forward — https://localhost:8080' -ForegroundColor Cyan; kubectl port-forward svc/argocd-server -n argocd 8080:443"
+# ArgoCD UI  ->  https://localhost:8080
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward svc/argocd-server -n argocd 8080:443"
 
-# Model serving  →  http://localhost:9090
-Start-Process powershell -ArgumentList "-NoExit", "-Command",
-    "Write-Host 'Model port-forward — http://localhost:9090' -ForegroundColor Cyan; kubectl port-forward svc/$MODEL_SVC -n $MODEL_NS 9090:8080"
+# Model serving  ->  http://localhost:9090
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward svc/$MODEL_SVC -n $MODEL_NS 9090:8080"
 
 Start-Sleep -Seconds 3   # give port-forwards time to bind
 Write-Ok "Port-forwards started."
