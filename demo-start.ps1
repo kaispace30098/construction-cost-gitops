@@ -108,7 +108,22 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forw
 # Model serving  ->  http://localhost:9090
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward svc/$MODEL_SVC -n $MODEL_NS 9090:8080"
 
-Start-Sleep -Seconds 3   # give port-forwards time to bind
+# Wait until port 9090 is actually accepting connections
+Write-Host "    Waiting for port-forward to bind..." -ForegroundColor DarkGray
+$portReady = $false
+$attempts  = 0
+while (-not $portReady -and $attempts -lt 30) {
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $tcp.Connect("localhost", 9090)
+        $tcp.Close()
+        $portReady = $true
+    } catch {
+        Start-Sleep -Seconds 1
+        $attempts++
+    }
+}
+if (-not $portReady) { Write-Err "Port 9090 not ready after 30s. Is the pod running?"; exit 1 }
 Write-Ok "Port-forwards started."
 
 # -----------------------------------------------------------------------------
