@@ -9,9 +9,12 @@ ArgoCD watches this repo and syncs to the kind cluster automatically.
 
 ```
 construction-cost-gitops/
-|-- deployment.yaml      # pulls image from ghcr.io, runs on port 8080
+|-- deployment.yaml      # image tag updated by CI on every successful train
 |-- service.yaml         # ClusterIP, exposes port 8080 inside cluster
 |-- kustomization.yaml   # kustomize entrypoint
+|-- kind-config.yaml     # kind cluster definition (1 control-plane + 2 workers)
+|-- argocd-app.yaml      # ArgoCD Application manifest
+|-- demo-start.ps1       # one-shot interview demo launcher
 \-- README.md
 ```
 
@@ -20,58 +23,109 @@ construction-cost-gitops/
 ## How it works
 
 ```
-Repo 1 CI (construction-cost-model) finishes
-  -> updates image tag in deployment.yaml
+Repo 1 CI (construction-cost-model) finishes package job
+  -> updates image SHA in deployment.yaml
   -> git push here
 
-ArgoCD detects change in this repo
-  -> syncs to kind cluster
-  -> rolling update to new model version
+ArgoCD polls this repo every ~3 min
+  -> detects deployment.yaml changed
+  -> pulls new image from ghcr.io
+  -> rolling update in kind cluster (zero manual steps)
 ```
 
 ---
 
-## Manual deploy (without ArgoCD)
+## Demo launcher
 
 ```powershell
-kubectl apply -k .
+.\demo-start.ps1
+```
+
+Handles everything automatically:
+- Checks Docker Desktop is running
+- Checks kind cluster exists (bootstraps from scratch if deleted)
+- Kills stale port-forwards
+- Waits for model pod READY 1/1
+- Starts port-forwards in new windows
+- Waits until port 9090 is accepting connections
+- Fires both demo predictions
+- Decodes ArgoCD password and opens both browser tabs
+
+---
+
+## Ports
+
+| Port | What | Command |
+|------|------|---------|
+| 8080 | ArgoCD UI (HTTPS) | `kubectl port-forward svc/argocd-server -n argocd 8080:443` |
+| 9090 | Model prediction API | `kubectl port-forward svc/construction-cost-model -n mlops 9090:8080` |
+
+> Note: 8080 is used for ArgoCD. Use 9090 for the model — not 8080.
+
+---
+
+## URLs
+
+| URL | Description |
+|-----|-------------|
+| `https://localhost:8080` | ArgoCD UI (accept cert warning) |
+| `http://localhost:9090/docs` | FastAPI Swagger UI — try /predict interactively |
+| `http://localhost:9090/health` | Health check |
+| `http://localhost:9090/predict` | Prediction endpoint (POST) |
+
+---
+
+## ArgoCD login
+
+Username: `admin`
+
+Get password (stays the same until cluster is deleted):
+```powershell
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
 ```
 
 ---
 
-## Test the deployed model
+## Manual prediction (without demo script)
 
 ```powershell
-# port-forward to local
-kubectl port-forward svc/construction-cost-model 8080:8080
+# High complexity -> ~$52,706
+Invoke-RestMethod -Uri http://localhost:9090/predict -Method Post -ContentType "application/json" -Body (
+    [PSCustomObject]@{
+        Task_Duration_Days=45; Labor_Required=15; Equipment_Units=8
+        Start_Constraint=3; Risk_Level="High"
+        Resource_Constraint_Score=6; Site_Constraint_Score=7; Dependency_Count=4
+    } | ConvertTo-Json -Compress
+)
 
-# send a prediction request
-curl -X POST http://localhost:8080/predict `
-  -H "Content-Type: application/json" `
-  -d "{\"Task_Duration_Days\": 30, \"Labor_Required\": 10, \"Equipment_Units\": 5, \"Start_Constraint\": 2, \"Risk_Level\": \"Medium\", \"Resource_Constraint_Score\": 5, \"Site_Constraint_Score\": 4, \"Dependency_Count\": 3}"
-```
-
-Expected response:
-```json
-{"predicted_cost_usd": 28500.00}
+# Low complexity -> ~$16,854
+Invoke-RestMethod -Uri http://localhost:9090/predict -Method Post -ContentType "application/json" -Body (
+    [PSCustomObject]@{
+        Task_Duration_Days=5; Labor_Required=2; Equipment_Units=1
+        Start_Constraint=0; Risk_Level="Low"
+        Resource_Constraint_Score=1; Site_Constraint_Score=1; Dependency_Count=0
+    } | ConvertTo-Json -Compress
+)
 ```
 
 ---
 
-## ArgoCD Setup
+## Bootstrap from scratch (if kind cluster deleted)
+
+`demo-start.ps1` handles this automatically. Manual steps if needed:
 
 ```powershell
-# Install ArgoCD in kind
+# 1. Create cluster
+kind create cluster --name mlops --config kind-config.yaml
+
+# 2. Install ArgoCD
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
 
-# Wait for pods to be ready
-kubectl wait --for=condition=Ready pods --all -n argocd --timeout=120s
+# 3. Apply ArgoCD app (creates mlops namespace + deploys model)
+kubectl apply -f argocd-app.yaml
 
-# Access ArgoCD UI
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-# Open https://localhost:8080
-
-# Get admin password
-kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+# 4. Run demo
+.\demo-start.ps1
 ```

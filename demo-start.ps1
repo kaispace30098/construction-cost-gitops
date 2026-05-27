@@ -165,15 +165,25 @@ Write-Host "`n  Model prices complexity correctly: high/low ratio = ${ratio}x" -
 # -----------------------------------------------------------------------------
 # DONE
 # -----------------------------------------------------------------------------
+# Decode ArgoCD password
+$encoded  = kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}"
+$argoPwd  = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($encoded))
+
+# Open browsers
+Start-Process "https://localhost:8080"
+Start-Sleep -Seconds 1
+Start-Process "http://localhost:9090/docs"
+
 Write-Host @"
 
 =============================================================================
   DEMO READY
 =============================================================================
-  ArgoCD UI  : https://localhost:8080  (accept cert warning)
-               Login: admin / run the command below to get password
-               kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | %{ [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(`$_)) }
+  ArgoCD UI   : https://localhost:8080   (accept cert warning)
+                Login -> admin
+                Password -> $argoPwd
 
-  Predictions: http://localhost:9090/predict
+  FastAPI docs: http://localhost:9090/docs  (try /predict interactively)
+  Health check: http://localhost:9090/health
 =============================================================================
 "@ -ForegroundColor Cyan
