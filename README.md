@@ -1,8 +1,8 @@
+
+# construction-cost-gitops
 <img width="2542" height="828" alt="image" src="https://github.com/user-attachments/assets/344666be-8121-4eb6-bb53-31039774d703" />
 <img width="2360" height="1412" alt="image" src="https://github.com/user-attachments/assets/5c677286-f37a-48d2-8f84-716374facea6" />
 
-
-# construction-cost-gitops
 
 GitOps manifest repo for construction-cost-model.
 ArgoCD watches this repo and syncs to the kind cluster automatically.
