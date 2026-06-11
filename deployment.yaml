@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: model-server
-          image: ghcr.io/kaispace30098/construction-cost-model:06bbac342547817d74f4213aed74648d506afec8
+          image: ghcr.io/kaispace30098/construction-cost-model:0d3d597afd7df32658e4ad49584b93c3577ce379
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
